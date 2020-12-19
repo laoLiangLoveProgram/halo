@@ -1,10 +1,10 @@
 package run.halo.app.controller.core;
 
-import cn.hutool.extra.servlet.ServletUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.web.ErrorProperties;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
 import org.springframework.boot.autoconfigure.web.servlet.error.AbstractErrorController;
+import org.springframework.boot.web.error.ErrorAttributeOptions;
 import org.springframework.boot.web.servlet.error.ErrorAttributes;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
@@ -54,9 +54,9 @@ public class CommonController extends AbstractErrorController {
     private final OptionService optionService;
 
     public CommonController(ThemeService themeService,
-                            ErrorAttributes errorAttributes,
-                            ServerProperties serverProperties,
-                            OptionService optionService) {
+            ErrorAttributes errorAttributes,
+            ServerProperties serverProperties,
+            OptionService optionService) {
         super(errorAttributes);
         this.themeService = themeService;
         this.errorProperties = serverProperties.getError();
@@ -71,23 +71,19 @@ public class CommonController extends AbstractErrorController {
      */
     @GetMapping
     public String handleError(HttpServletRequest request, HttpServletResponse response, Model model) {
-        log.error("Request URL: [{}], URI: [{}], Request Method: [{}], IP: [{}]",
-            request.getRequestURL(),
-            request.getRequestURI(),
-            request.getMethod(),
-            ServletUtil.getClientIP(request));
-
         handleCustomException(request);
 
-        Map<String, Object> errorDetail = Collections.unmodifiableMap(getErrorAttributes(request, isIncludeStackTrace(request)));
+        ErrorAttributeOptions options = getErrorAttributeOptions(request);
+
+        Map<String, Object> errorDetail = Collections.unmodifiableMap(getErrorAttributes(request, options));
         model.addAttribute("error", errorDetail);
         model.addAttribute("meta_keywords", optionService.getSeoKeywords());
         model.addAttribute("meta_description", optionService.getSeoDescription());
-
         log.debug("Error detail: [{}]", errorDetail);
 
         HttpStatus status = getStatus(request);
 
+        response.setStatus(status.value());
         if (status.equals(HttpStatus.INTERNAL_SERVER_ERROR)) {
             return contentInternalError();
         } else if (status.equals(HttpStatus.NOT_FOUND)) {
@@ -142,9 +138,9 @@ public class CommonController extends AbstractErrorController {
 
         StringBuilder path = new StringBuilder();
         path.append("themes/")
-            .append(themeService.getActivatedTheme().getFolderName())
-            .append('/')
-            .append(FilenameUtils.getBasename(template));
+                .append(themeService.getActivatedTheme().getFolderName())
+                .append('/')
+                .append(FilenameUtils.getBasename(template));
 
         return path.toString();
     }
@@ -165,9 +161,12 @@ public class CommonController extends AbstractErrorController {
         Throwable throwable = (Throwable) throwableObject;
 
         if (throwable instanceof NestedServletException) {
-            log.error("Captured an exception", throwable);
+            log.error("Captured an exception: [{}]", throwable.getMessage());
             Throwable rootCause = ((NestedServletException) throwable).getRootCause();
             if (rootCause instanceof AbstractHaloException) {
+                if (!(rootCause instanceof NotFoundException)) {
+                    log.error("Caused by", rootCause);
+                }
                 AbstractHaloException haloException = (AbstractHaloException) rootCause;
                 request.setAttribute("javax.servlet.error.status_code", haloException.getStatus().value());
                 request.setAttribute("javax.servlet.error.exception", rootCause);
@@ -209,5 +208,22 @@ public class CommonController extends AbstractErrorController {
             return getTraceParameter(request);
         }
         return false;
+    }
+
+    /**
+     * Get the ErrorAttributeOptions .
+     *
+     * @param request the source request
+     * @return {@link ErrorAttributeOptions}
+     */
+    private ErrorAttributeOptions getErrorAttributeOptions(HttpServletRequest request) {
+        ErrorProperties.IncludeStacktrace include = errorProperties.getIncludeStacktrace();
+        if (include == ErrorProperties.IncludeStacktrace.ALWAYS) {
+            return ErrorAttributeOptions.of(ErrorAttributeOptions.Include.STACK_TRACE);
+        }
+        if (include == ErrorProperties.IncludeStacktrace.ON_TRACE_PARAM && getTraceParameter(request)) {
+            return ErrorAttributeOptions.of(ErrorAttributeOptions.Include.STACK_TRACE);
+        }
+        return ErrorAttributeOptions.defaults();
     }
 }

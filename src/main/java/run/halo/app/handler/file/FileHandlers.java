@@ -51,7 +51,6 @@ public class FileHandlers {
         return getSupportedType(attachmentType).upload(file);
     }
 
-
     /**
      * Deletes attachment.
      *
@@ -61,7 +60,7 @@ public class FileHandlers {
     public void delete(@NonNull Attachment attachment) {
         Assert.notNull(attachment, "Attachment must not be null");
         getSupportedType(attachment.getType())
-            .delete(attachment.getFileKey());
+                .delete(attachment.getFileKey());
     }
 
     /**

@@ -4,6 +4,7 @@ import com.obs.services.ObsClient;
 import com.obs.services.model.PutObjectResult;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
@@ -16,7 +17,6 @@ import run.halo.app.service.OptionService;
 import run.halo.app.utils.FilenameUtils;
 import run.halo.app.utils.ImageUtils;
 
-import javax.imageio.ImageReader;
 import java.io.IOException;
 import java.util.Objects;
 
@@ -39,7 +39,7 @@ public class HuaweiObsFileHandler implements FileHandler {
     }
 
     @Override
-    public UploadResult upload(MultipartFile file) {
+    public @NotNull UploadResult upload(@NotNull MultipartFile file) {
         Assert.notNull(file, "Multipart file must not be null");
 
         // Get config
@@ -60,12 +60,12 @@ public class HuaweiObsFileHandler implements FileHandler {
 
         if (StringUtils.isNotEmpty(domain)) {
             basePath.append(domain)
-                .append(URL_SEPARATOR);
+                    .append(URL_SEPARATOR);
         } else {
             basePath.append(bucketName)
-                .append(".")
-                .append(endPoint)
-                .append(URL_SEPARATOR);
+                    .append(".")
+                    .append(endPoint)
+                    .append(URL_SEPARATOR);
         }
 
         try {
@@ -76,14 +76,14 @@ public class HuaweiObsFileHandler implements FileHandler {
 
             if (StringUtils.isNotEmpty(source)) {
                 upFilePath.append(source)
-                    .append(URL_SEPARATOR);
+                        .append(URL_SEPARATOR);
             }
 
             upFilePath.append(basename)
-                .append("_")
-                .append(timestamp)
-                .append(".")
-                .append(extension);
+                    .append("_")
+                    .append(timestamp)
+                    .append(".")
+                    .append(extension);
 
             String filePath = StringUtils.join(basePath.toString(), upFilePath.toString());
 
@@ -104,18 +104,13 @@ public class HuaweiObsFileHandler implements FileHandler {
             uploadResult.setSuffix(extension);
             uploadResult.setSize(file.getSize());
 
-            // Handle thumbnail
-            if (FileHandler.isImageType(uploadResult.getMediaType())) {
-                ImageReader image = ImageUtils.getImageReaderFromFile(file.getInputStream(), extension);
-                assert image != null;
-                uploadResult.setWidth(image.getWidth(0));
-                uploadResult.setHeight(image.getHeight(0));
+            handleImageMetadata(file, uploadResult, () -> {
                 if (ImageUtils.EXTENSION_ICO.equals(extension)) {
-                    uploadResult.setThumbPath(filePath);
+                    return filePath;
                 } else {
-                    uploadResult.setThumbPath(StringUtils.isBlank(thumbnailStyleRule) ? filePath : filePath + thumbnailStyleRule);
+                    return StringUtils.isBlank(thumbnailStyleRule) ? filePath : filePath + thumbnailStyleRule;
                 }
-            }
+            });
 
             log.info("Uploaded file: [{}] successfully", file.getOriginalFilename());
             return uploadResult;
@@ -131,7 +126,7 @@ public class HuaweiObsFileHandler implements FileHandler {
     }
 
     @Override
-    public void delete(String key) {
+    public void delete(@NotNull String key) {
         Assert.notNull(key, "File key must not be blank");
 
         // Get config

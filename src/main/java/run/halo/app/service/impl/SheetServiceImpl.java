@@ -20,6 +20,7 @@ import run.halo.app.model.entity.SheetComment;
 import run.halo.app.model.entity.SheetMeta;
 import run.halo.app.model.enums.LogType;
 import run.halo.app.model.enums.PostStatus;
+import run.halo.app.model.enums.SheetPermalinkType;
 import run.halo.app.model.vo.SheetDetailVO;
 import run.halo.app.model.vo.SheetListVO;
 import run.halo.app.repository.SheetRepository;
@@ -57,11 +58,11 @@ public class SheetServiceImpl extends BasePostServiceImpl<Sheet> implements Shee
     private final OptionService optionService;
 
     public SheetServiceImpl(SheetRepository sheetRepository,
-                            ApplicationEventPublisher eventPublisher,
-                            SheetCommentService sheetCommentService,
-                            SheetMetaService sheetMetaService,
-                            ThemeService themeService,
-                            OptionService optionService) {
+            ApplicationEventPublisher eventPublisher,
+            SheetCommentService sheetCommentService,
+            SheetMetaService sheetMetaService,
+            ThemeService themeService,
+            OptionService optionService) {
         super(sheetRepository, optionService);
         this.sheetRepository = sheetRepository;
         this.eventPublisher = eventPublisher;
@@ -295,8 +296,8 @@ public class SheetServiceImpl extends BasePostServiceImpl<Sheet> implements Shee
         }
 
         return sheets.stream()
-            .map(this::convertToMinimal)
-            .collect(Collectors.toList());
+                .map(this::convertToMinimal)
+                .collect(Collectors.toList());
     }
 
     @NonNull
@@ -346,16 +347,25 @@ public class SheetServiceImpl extends BasePostServiceImpl<Sheet> implements Shee
     private String buildFullPath(Sheet sheet) {
         StringBuilder fullPath = new StringBuilder();
 
+        SheetPermalinkType permalinkType = optionService.getSheetPermalinkType();
+
         if (optionService.isEnabledAbsolutePath()) {
             fullPath.append(optionService.getBlogBaseUrl());
         }
 
-        fullPath.append(URL_SEPARATOR)
-            .append(optionService.getSheetPrefix())
-            .append(URL_SEPARATOR)
-            .append(sheet.getSlug())
-            .append(optionService.getPathSuffix());
+        if (permalinkType.equals(SheetPermalinkType.SECONDARY)) {
+            fullPath.append(URL_SEPARATOR)
+                    .append(optionService.getSheetPrefix())
+                    .append(URL_SEPARATOR)
+                    .append(sheet.getSlug())
+                    .append(optionService.getPathSuffix());
+        } else if (permalinkType.equals(SheetPermalinkType.ROOT)) {
+            fullPath.append(URL_SEPARATOR)
+                    .append(sheet.getSlug())
+                    .append(optionService.getPathSuffix());
+        }
 
         return fullPath.toString();
     }
+
 }

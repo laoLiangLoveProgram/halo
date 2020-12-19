@@ -23,6 +23,7 @@ import run.halo.app.model.dto.OptionDTO;
 import run.halo.app.model.dto.OptionSimpleDTO;
 import run.halo.app.model.entity.Option;
 import run.halo.app.model.enums.PostPermalinkType;
+import run.halo.app.model.enums.SheetPermalinkType;
 import run.halo.app.model.enums.ValueEnum;
 import run.halo.app.model.params.OptionParam;
 import run.halo.app.model.params.OptionQuery;
@@ -57,10 +58,10 @@ public class OptionServiceImpl extends AbstractCrudService<Option, Integer> impl
     private final HaloProperties haloProperties;
 
     public OptionServiceImpl(HaloProperties haloProperties,
-                             OptionRepository optionRepository,
-                             ApplicationContext applicationContext,
-                             AbstractStringCacheStore cacheStore,
-                             ApplicationEventPublisher eventPublisher) {
+            OptionRepository optionRepository,
+            ApplicationContext applicationContext,
+            AbstractStringCacheStore cacheStore,
+            ApplicationEventPublisher eventPublisher) {
         super(optionRepository);
         this.haloProperties = haloProperties;
         this.optionRepository = optionRepository;
@@ -192,17 +193,17 @@ public class OptionServiceImpl extends AbstractCrudService<Option, Integer> impl
 
             // Add default property
             propertyEnumMap.keySet()
-                .stream()
-                .filter(key -> !keys.contains(key))
-                .forEach(key -> {
-                    PropertyEnum propertyEnum = propertyEnumMap.get(key);
+                    .stream()
+                    .filter(key -> !keys.contains(key))
+                    .forEach(key -> {
+                        PropertyEnum propertyEnum = propertyEnumMap.get(key);
 
-                    if (StringUtils.isBlank(propertyEnum.defaultValue())) {
-                        return;
-                    }
+                        if (StringUtils.isBlank(propertyEnum.defaultValue())) {
+                            return;
+                        }
 
-                    result.put(key, PropertyEnum.convertTo(propertyEnum.defaultValue(), propertyEnum));
-                });
+                        result.put(key, PropertyEnum.convertTo(propertyEnum.defaultValue(), propertyEnum));
+                    });
 
             // Cache the result
             cacheStore.putAny(OPTIONS_KEY, result);
@@ -222,8 +223,8 @@ public class OptionServiceImpl extends AbstractCrudService<Option, Integer> impl
         Map<String, Object> result = new HashMap<>(keys.size());
 
         keys.stream()
-            .filter(optionMap::containsKey)
-            .forEach(key -> result.put(key, optionMap.get(key)));
+                .filter(optionMap::containsKey)
+                .forEach(key -> result.put(key, optionMap.get(key)));
 
         return result;
     }
@@ -516,6 +517,11 @@ public class OptionServiceImpl extends AbstractCrudService<Option, Integer> impl
     @Override
     public PostPermalinkType getPostPermalinkType() {
         return getEnumByPropertyOrDefault(PermalinkProperties.POST_PERMALINK_TYPE, PostPermalinkType.class, PostPermalinkType.DEFAULT);
+    }
+
+    @Override
+    public SheetPermalinkType getSheetPermalinkType() {
+        return getEnumByPropertyOrDefault(PermalinkProperties.SHEET_PERMALINK_TYPE, SheetPermalinkType.class, SheetPermalinkType.SECONDARY);
     }
 
     @Override
